@@ -1,4 +1,4 @@
-# Hardware Checklist - F-35 Tricopter VTOL
+# Hardware Checklist - F-35 TRICOPTER VTOL
 
 ## Flight Controller
 - [x] **Teensy 4.0** microcontroller
@@ -32,5 +32,9 @@
   - Voltage: 14.8V nominal (16.8V fully charged)
   - Capacity: 2200mAh+ recommended for F-35 tricopter
   - C-rating: 25C+ for adequate current delivery
-- [ ] **Power distribution board** for tricopter configuration
-- ~~**5V regulator** for Teensy 4.0~~ (ESC BEC provides 5V @ 0.6A - sufficient)
+- [x] **WANGCL 5V/3A UBEC** - Power regulator for flight controller and electronics
+  - **Input**: 5.5V-26V (supports 2-6S LiPo)
+  - **Output**: 5V/3A regulated
+  - **Features**: Over-current, over-temperature, reverse polarity protection
+  - **Dimensions**: 43x17x7mm (compact design)
+  - **EMI Shielding**: Reduces electromagnetic interference
