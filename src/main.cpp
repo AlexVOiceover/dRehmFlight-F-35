@@ -93,7 +93,14 @@ float invSqrt(float x);
 void printGyroData();
 void printAccelData();
 
-
+//SBUS external declarations (when using SBUS)
+#if defined USE_SBUS_RX
+  class SBUS;
+  extern SBUS sbus;
+  extern uint16_t sbusChannels[16];
+  extern bool sbusFailSafe;
+  extern bool sbusLostFrame;
+#endif
 
 //========================================================================================================================//
 
@@ -166,12 +173,18 @@ float Kd_yaw = 0.00011;       //Yaw D-gain (be careful when increasing too high,
 //NOTE: Pin 13 is reserved for onboard LED, pins 18 and 19 are reserved for the MPU6050 IMU for default setup
 //Radio:
 //Note: If using SBUS, connect to pin 21 (RX5)
+//PWM pins (COMMENTED for SBUS setup - uncomment and disable SBUS to revert)
+/*
 int ch1Pin = 15; //throttle
 int ch2Pin = 16; //ail
 int ch3Pin = 17; //ele
 int ch4Pin = 20; //rudd
 int ch5Pin = 21; //gear (throttle cut)
 int ch6Pin = 22; //aux1 (free aux channel)
+*/
+
+//SBUS setup - using Serial5 on pin 21
+//Note: If using SBUS, connect R24 Output 1 pad to Teensy pin 21 (Serial5 RX)
 //OneShot125 ESC pin outputs:
 const int m1Pin = 0;
 const int m2Pin = 1;
@@ -1158,14 +1171,25 @@ void scaleCommands() {
 }
 
 void getCommands() {
-  //DESCRIPTION: Get raw PWM values for every channel from the radio
+  //DESCRIPTION: Get raw radio values for every channel (SBUS or PWM)
   /*
-   * Updates radio PWM commands in loop based on current available commands. channel_x_pwm is the raw command used in the rest of 
-   * the loop. If using a PWM or PPM receiver, the radio commands are retrieved from a function in the readPWM file separate from this one which 
-   * is running a bunch of interrupts to continuously update the radio readings. If using an SBUS receiver, the alues are pulled from the SBUS library directly.
+   * Updates radio commands in loop based on current available commands. channel_x_pwm is the raw command used in the rest of 
+   * the loop. If using SBUS receiver, we read the SBUS data first, then getRadioPWM() converts it to PWM-like values.
    * The raw radio commands are filtered with a first order low-pass filter to eliminate any really high frequency noise. 
    */
 
+  #if defined USE_SBUS_RX
+    //Read SBUS data from receiver
+    extern SBUS sbus;
+    extern uint16_t sbusChannels[16];
+    extern bool sbusFailSafe;
+    extern bool sbusLostFrame;
+    
+    //Update SBUS data if new frame available
+    sbus.read(&sbusChannels[0], &sbusFailSafe, &sbusLostFrame);
+  #endif
+  
+  //Get channel values (SBUS values will be converted to PWM-like range in getRadioPWM)
   channel_1_pwm = getRadioPWM(1);
   channel_2_pwm = getRadioPWM(2);
   channel_3_pwm = getRadioPWM(3);
