@@ -7,46 +7,44 @@
 
 //This file contains all necessary functions and code used for radio communication to avoid cluttering the main code
 
+#include <Arduino.h>
+
+//External pin definitions from main.cpp
+extern int ch1Pin; //throttle
+extern int ch2Pin; //ail
+extern int ch3Pin; //ele
+extern int ch4Pin; //rudd
+extern int ch5Pin; //gear
+extern int ch6Pin; //aux1
+
 unsigned long rising_edge_start_1, rising_edge_start_2, rising_edge_start_3, rising_edge_start_4, rising_edge_start_5, rising_edge_start_6; 
 unsigned long channel_1_raw, channel_2_raw, channel_3_raw, channel_4_raw, channel_5_raw, channel_6_raw;
-int ppm_counter = 0;
-unsigned long time_ms = 0;
 
+//Function declarations
+void getCh1();
+void getCh2();
+void getCh3();
+void getCh4();
+void getCh5();
+void getCh6();
 void radioSetup() {
-  //PPM Receiver 
-  #if defined USE_PPM_RX
-    //Declare interrupt pin
-    pinMode(PPM_Pin, INPUT_PULLUP);
-    delay(20);
-    //Attach interrupt and point to corresponding ISR function
-    attachInterrupt(digitalPinToInterrupt(PPM_Pin), getPPM, CHANGE);
-
-  //PWM Receiver
-  #elif defined USE_PWM_RX
-    //Declare interrupt pins 
-    pinMode(ch1Pin, INPUT_PULLUP);
-    pinMode(ch2Pin, INPUT_PULLUP);
-    pinMode(ch3Pin, INPUT_PULLUP);
-    pinMode(ch4Pin, INPUT_PULLUP);
-    pinMode(ch5Pin, INPUT_PULLUP);
-    pinMode(ch6Pin, INPUT_PULLUP);
-    delay(20);
-    //Attach interrupt and point to corresponding ISR functions
-    attachInterrupt(digitalPinToInterrupt(ch1Pin), getCh1, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(ch2Pin), getCh2, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(ch3Pin), getCh3, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(ch4Pin), getCh4, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(ch5Pin), getCh5, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(ch6Pin), getCh6, CHANGE);
-    delay(20);
-
-  //SBUS Recevier 
-  #elif defined USE_SBUS_RX
-    sbus.begin();
-    
-  #else
-    #error No RX type defined...
-  #endif
+  //PWM Receiver Setup
+  //Declare interrupt pins 
+  pinMode(ch1Pin, INPUT_PULLUP);
+  pinMode(ch2Pin, INPUT_PULLUP);
+  pinMode(ch3Pin, INPUT_PULLUP);
+  pinMode(ch4Pin, INPUT_PULLUP);
+  pinMode(ch5Pin, INPUT_PULLUP);
+  pinMode(ch6Pin, INPUT_PULLUP);
+  delay(20);
+  //Attach interrupt and point to corresponding ISR functions
+  attachInterrupt(digitalPinToInterrupt(ch1Pin), getCh1, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ch2Pin), getCh2, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ch3Pin), getCh3, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ch4Pin), getCh4, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ch5Pin), getCh5, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(ch6Pin), getCh6, CHANGE);
+  delay(20);
 }
 
 unsigned long getRadioPWM(int ch_num) {
@@ -81,47 +79,7 @@ unsigned long getRadioPWM(int ch_num) {
 
 
 
-//INTERRUPT SERVICE ROUTINES (for reading PWM and PPM)
-
-void getPPM() {
-  unsigned long dt_ppm;
-  int trig = digitalRead(PPM_Pin);
-  if (trig==1) { //only care about rising edge
-    dt_ppm = micros() - time_ms;
-    time_ms = micros();
-
-    
-    if (dt_ppm > 5000) { //waiting for long pulse to indicate a new pulse train has arrived
-      ppm_counter = 0;
-    }
-  
-    if (ppm_counter == 1) { //first pulse
-      channel_1_raw = dt_ppm;
-    }
-  
-    if (ppm_counter == 2) { //second pulse
-      channel_2_raw = dt_ppm;
-    }
-  
-    if (ppm_counter == 3) { //third pulse
-      channel_3_raw = dt_ppm;
-    }
-  
-    if (ppm_counter == 4) { //fourth pulse
-      channel_4_raw = dt_ppm;
-    }
-  
-    if (ppm_counter == 5) { //fifth pulse
-      channel_5_raw = dt_ppm;
-    }
-  
-    if (ppm_counter == 6) { //sixth pulse
-      channel_6_raw = dt_ppm;
-    }
-    
-    ppm_counter = ppm_counter + 1;
-  }
-}
+//INTERRUPT SERVICE ROUTINES (for reading PWM)
 
 void getCh1() {
   int trigger = digitalRead(ch1Pin);

@@ -48,26 +48,7 @@ RcGroups 'jihlein' - IMU implementation overhaul + SBUS implementation
 //                                                 USER-SPECIFIED DEFINES                                                 //                                                                 
 //========================================================================================================================//
 
-//Uncomment only one receiver type
-#define USE_PWM_RX
-//#define USE_PPM_RX
-//#define USE_SBUS_RX
-
-//Uncomment only one IMU
-#define USE_MPU6050_I2C //default
-//#define USE_MPU9250_SPI
-
-//Uncomment only one full scale gyro range (deg/sec)
-//#define GYRO_250DPS //default
-#define GYRO_500DPS
-//#define GYRO_1000DPS
-//#define GYRO_2000DPS
-
-//Uncomment only one full scale accelerometer range (G's)
-#define ACCEL_2G //default
-//#define ACCEL_4G
-//#define ACCEL_8G
-//#define ACCEL_16G
+//Hardware configuration is set in platformio.ini build_flags
 
 
 
@@ -78,22 +59,39 @@ RcGroups 'jihlein' - IMU implementation overhaul + SBUS implementation
 //REQUIRED LIBRARIES (included with download in main sketch folder)
 
 #include <Wire.h>     //I2c communication
-#include <SPI.h>      //SPI communication
 #include <PWMServo.h> //commanding any extra actuators, installed with teensyduino installer
 
-#if defined USE_SBUS_RX
-  #include "src/SBUS/SBUS.h"   //sBus interface
-#endif
 
-#if defined USE_MPU6050_I2C
-  #include "src/MPU6050/MPU6050.h"
-  MPU6050 mpu6050;
-#elif defined USE_MPU9250_SPI
-  #include "src/MPU9250/MPU9250.h"
-  MPU9250 mpu9250(SPI2,36);
-#else
-  #error No MPU defined... 
-#endif
+#include "MPU6050.h"
+MPU6050 mpu6050;
+
+//Function declarations
+void radioSetup();
+void IMUinit();
+void calculate_IMU_error();
+void getIMUdata();
+void commandMotors();
+void setupBlink(int, int, int);
+void loopBlink();
+void printServoCommands();
+void Madgwick6DOF(float, float, float, float, float, float, float);
+void getDesState();
+void controlRATE();
+void controlMixer();
+void scaleCommands();
+void throttleCut();
+void getCommands();
+void failSafe();
+void loopRate(int);
+void printRadioData();
+void getRawCommands();
+float getRadioPWM(int);
+float floatFaderLinear(float, float, float, float, int, int);
+float floatFaderLinear2(float, float, float, float, float, float, int);
+float switchRollYaw(int, int);
+float invSqrt(float x);
+void printGyroData();
+void printAccelData();
 
 
 
@@ -103,53 +101,14 @@ RcGroups 'jihlein' - IMU implementation overhaul + SBUS implementation
 
 //Setup gyro and accel full scale value selection and scale factor
 
-#if defined USE_MPU6050_I2C
-  #define GYRO_FS_SEL_250    MPU6050_GYRO_FS_250
-  #define GYRO_FS_SEL_500    MPU6050_GYRO_FS_500
-  #define GYRO_FS_SEL_1000   MPU6050_GYRO_FS_1000
-  #define GYRO_FS_SEL_2000   MPU6050_GYRO_FS_2000
-  #define ACCEL_FS_SEL_2     MPU6050_ACCEL_FS_2
-  #define ACCEL_FS_SEL_4     MPU6050_ACCEL_FS_4
-  #define ACCEL_FS_SEL_8     MPU6050_ACCEL_FS_8
-  #define ACCEL_FS_SEL_16    MPU6050_ACCEL_FS_16
-#elif defined USE_MPU9250_SPI
-  #define GYRO_FS_SEL_250    mpu9250.GYRO_RANGE_250DPS
-  #define GYRO_FS_SEL_500    mpu9250.GYRO_RANGE_500DPS
-  #define GYRO_FS_SEL_1000   mpu9250.GYRO_RANGE_1000DPS                                                        
-  #define GYRO_FS_SEL_2000   mpu9250.GYRO_RANGE_2000DPS
-  #define ACCEL_FS_SEL_2     mpu9250.ACCEL_RANGE_2G
-  #define ACCEL_FS_SEL_4     mpu9250.ACCEL_RANGE_4G
-  #define ACCEL_FS_SEL_8     mpu9250.ACCEL_RANGE_8G
-  #define ACCEL_FS_SEL_16    mpu9250.ACCEL_RANGE_16G
-#endif
+#define GYRO_FS_SEL_500    MPU6050_GYRO_FS_500
+#define ACCEL_FS_SEL_2     MPU6050_ACCEL_FS_2
   
-#if defined GYRO_250DPS
-  #define GYRO_SCALE GYRO_FS_SEL_250
-  #define GYRO_SCALE_FACTOR 131.0
-#elif defined GYRO_500DPS
-  #define GYRO_SCALE GYRO_FS_SEL_500
-  #define GYRO_SCALE_FACTOR 65.5
-#elif defined GYRO_1000DPS
-  #define GYRO_SCALE GYRO_FS_SEL_1000
-  #define GYRO_SCALE_FACTOR 32.8
-#elif defined GYRO_2000DPS
-  #define GYRO_SCALE GYRO_FS_SEL_2000
-  #define GYRO_SCALE_FACTOR 16.4
-#endif
+#define GYRO_SCALE GYRO_FS_SEL_500
+#define GYRO_SCALE_FACTOR 65.5
 
-#if defined ACCEL_2G
-  #define ACCEL_SCALE ACCEL_FS_SEL_2
-  #define ACCEL_SCALE_FACTOR 16384.0
-#elif defined ACCEL_4G
-  #define ACCEL_SCALE ACCEL_FS_SEL_4
-  #define ACCEL_SCALE_FACTOR 8192.0
-#elif defined ACCEL_8G
-  #define ACCEL_SCALE ACCEL_FS_SEL_8
-  #define ACCEL_SCALE_FACTOR 4096.0
-#elif defined ACCEL_16G
-  #define ACCEL_SCALE ACCEL_FS_SEL_16
-  #define ACCEL_SCALE_FACTOR 2048.0
-#endif
+#define ACCEL_SCALE ACCEL_FS_SEL_2
+#define ACCEL_SCALE_FACTOR 16384.0
 
 
 
@@ -169,15 +128,6 @@ unsigned long channel_6_fs = 2000; //aux1
 float B_madgwick = 0.04;  //Madgwick filter parameter
 float B_accel = 0.14;     //Accelerometer LP filter paramter, (MPU6050 default: 0.14. MPU9250 default: 0.2)
 float B_gyro = 0.1;       //Gyro LP filter paramter, (MPU6050 default: 0.1. MPU9250 default: 0.17)
-float B_mag = 1.0;        //Magnetometer LP filter parameter
-
-//Magnetometer calibration parameters - if using MPU9250, uncomment calibrateMagnetometer() in void setup() to get these values, else just ignore these
-float MagErrorX = 0.0;
-float MagErrorY = 0.0; 
-float MagErrorZ = 0.0;
-float MagScaleX = 1.0;
-float MagScaleY = 1.0;
-float MagScaleZ = 1.0;
 
 //Controller parameters (take note of defaults before modifying!): 
 //IGNORE THESE, TUNE THEM IN THE CONTROL MIXER FOR THE F-35
@@ -216,13 +166,12 @@ float Kd_yaw = 0.00011;       //Yaw D-gain (be careful when increasing too high,
 //NOTE: Pin 13 is reserved for onboard LED, pins 18 and 19 are reserved for the MPU6050 IMU for default setup
 //Radio:
 //Note: If using SBUS, connect to pin 21 (RX5)
-const int ch1Pin = 15; //throttle
-const int ch2Pin = 16; //ail
-const int ch3Pin = 17; //ele
-const int ch4Pin = 20; //rudd
-const int ch5Pin = 21; //gear (throttle cut)
-const int ch6Pin = 22; //aux1 (free aux channel)
-const int PPM_Pin = 23;
+int ch1Pin = 15; //throttle
+int ch2Pin = 16; //ail
+int ch3Pin = 17; //ele
+int ch4Pin = 20; //rudd
+int ch5Pin = 21; //gear (throttle cut)
+int ch6Pin = 22; //aux1 (free aux channel)
 //OneShot125 ESC pin outputs:
 const int m1Pin = 0;
 const int m2Pin = 1;
@@ -265,20 +214,12 @@ bool blinkAlternate;
 unsigned long channel_1_pwm, channel_2_pwm, channel_3_pwm, channel_4_pwm, channel_5_pwm, channel_6_pwm;
 unsigned long channel_1_pwm_prev, channel_2_pwm_prev, channel_3_pwm_prev, channel_4_pwm_prev;
 
-#if defined USE_SBUS_RX
-  SBUS sbus(Serial5);
-  uint16_t sbusChannels[16];
-  bool sbusFailSafe;
-  bool sbusLostFrame;
-#endif
 
 //IMU:
 float AccX, AccY, AccZ;
 float AccX_prev, AccY_prev, AccZ_prev;
 float GyroX, GyroY, GyroZ;
 float GyroX_prev, GyroY_prev, GyroZ_prev;
-float MagX, MagY, MagZ;
-float MagX_prev, MagY_prev, MagZ_prev;
 float roll_IMU, pitch_IMU, yaw_IMU;
 float roll_IMU_prev, pitch_IMU_prev;
 float AccErrorX, AccErrorY, AccErrorZ, GyroErrorX, GyroErrorY, GyroErrorZ;
@@ -387,8 +328,6 @@ void setup() {
   //Indicate entering main loop with 3 quick blinks
   setupBlink(3,100,30); //numBlinks, upTime (ms), downTime (ms)
 
-  //If using MPU9250 IMU, uncomment for one-time magnetometer calibration (may need to repeat for new locations)
-  //calibrateMagnetometer(); //generates magentometer error and scale factors
 
 }
 
@@ -408,18 +347,17 @@ void loop() {
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
   //printRadioData();     //radio pwm values (expected: 1000 to 2000)
   //printDesiredState();  //prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
-  //printGyroData();      //prints filtered gyro data direct from IMU (expected: ~ -250 to 250, 0 at rest)
-  //printAccelData();     //prints filtered accelerometer data direct from IMU (expected: ~ -2 to 2; x,y 0 when level, z 1 when level)
-  //printMagData();       //prints filtered magnetometer data direct from IMU (expected: ~ -300 to 300)
+  printRadioData();     //prints radio PWM values (expected: 1000-2000 range)
+  //printDesiredState();  //prints desired roll, pitch, yaw angles and throttle
   //printRollPitchYaw();  //prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
   //printPIDoutput();     //prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
   //printMotorCommands(); //prints the values being written to the motors (expected: 120 to 250)
-  printServoCommands(); //prints the values being written to the servos (expected: 0 to 180)
+  //printServoCommands(); //prints the values being written to the servos (expected: 0 to 180)
   //printLoopRate();      //prints the time between loops in microseconds (expected: microseconds between loop iterations)
 
   //Get vehicle state
-  getIMUdata(); //pulls raw gyro, accelerometer, and magnetometer data from IMU and LP filters to remove noise
-  Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt); //updates roll_IMU, pitch_IMU, and yaw_IMU (degrees)
+  getIMUdata(); //pulls raw gyro and accelerometer data from IMU and LP filters to remove noise
+  Madgwick6DOF(-GyroX, GyroY, GyroZ, AccX, AccY, AccZ, dt); //updates roll_IMU, pitch_IMU, and yaw_IMU (degrees)
 
   //Compute desired state
   getDesState(); //convert raw commands to normalized values based on saturated control limits
@@ -507,22 +445,17 @@ void IMUinit() {
 }
 
 void getIMUdata() {
-  //DESCRIPTION: Request full dataset from IMU and LP filter gyro, accelerometer, and magnetometer data
+  //DESCRIPTION: Request gyro and accelerometer data from IMU and apply LP filtering
   /*
-   * Reads accelerometer, gyro, and magnetometer data from IMU as AccX, AccY, AccZ, GyroX, GyroY, GyroZ, MagX, MagY, MagZ. 
-   * These values are scaled according to the IMU datasheet to put them into correct units of g's, deg/sec, and uT. A simple first-order
-   * low-pass filter is used to get rid of high frequency noise in these raw signals. Generally you want to cut
-   * off everything past 80Hz, but if your loop rate is not fast enough, the low pass filter will cause a lag in
-   * the readings. The filter parameters B_gyro and B_accel are set to be good for a 2kHz loop rate. Finally,
-   * the constant errors found in calculate_IMU_error() on startup are subtracted from the accelerometer and gyro readings.
+   * Reads accelerometer and gyro data from IMU as AccX, AccY, AccZ, GyroX, GyroY, GyroZ. 
+   * These values are scaled according to the IMU datasheet to put them into correct units of g's and deg/sec.
+   * A simple first-order low-pass filter is used to get rid of high frequency noise in these raw signals.
+   * The filter parameters B_gyro and B_accel are set to be good for a 2kHz loop rate. Finally,
+   * the constant errors found in calculate_IMU_error() on startup are subtracted from the readings.
    */
-  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ,MgX,MgY,MgZ;
+  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ;
 
-  #if defined USE_MPU6050_I2C
-    mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
-  #elif defined USE_MPU9250_SPI
-    mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
-  #endif
+  mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
 
  //Accelerometer
   AccX = AcX / ACCEL_SCALE_FACTOR; //G's
@@ -556,21 +489,6 @@ void getIMUdata() {
   GyroY_prev = GyroY;
   GyroZ_prev = GyroZ;
 
-  //Magnetometer
-  MagX = MgX/6.0; //uT
-  MagY = MgY/6.0;
-  MagZ = MgZ/6.0;
-  //Correct the outputs with the calculated error values
-  MagX = (MagX - MagErrorX)*MagScaleX;
-  MagY = (MagY - MagErrorY)*MagScaleY;
-  MagZ = (MagZ - MagErrorZ)*MagScaleZ;
-  //LP filter magnetometer data
-  MagX = (1.0 - B_mag)*MagX_prev + B_mag*MagX;
-  MagY = (1.0 - B_mag)*MagY_prev + B_mag*MagY;
-  MagZ = (1.0 - B_mag)*MagZ_prev + B_mag*MagZ;
-  MagX_prev = MagX;
-  MagY_prev = MagY;
-  MagZ_prev = MagZ;
 }
 
 void calculate_IMU_error() {
@@ -580,16 +498,12 @@ void calculate_IMU_error() {
    * accelerometer values AccX, AccY, AccZ, GyroX, GyroY, GyroZ in getIMUdata(). This eliminates drift in the
    * measurement. 
    */
-  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ,MgX,MgY,MgZ;
+  int16_t AcX,AcY,AcZ,GyX,GyY,GyZ;
   
   //Read IMU values 12000 times
   int c = 0;
   while (c < 12000) {
-    #if defined USE_MPU6050_I2C
-      mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
-    #elif defined USE_MPU9250_SPI
-      mpu9250.getMotion9(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ, &MgX, &MgY, &MgZ);
-    #endif
+    mpu6050.getMotion6(&AcX, &AcY, &AcZ, &GyX, &GyY, &GyZ);
     
     AccX  = AcX / ACCEL_SCALE_FACTOR;
     AccY  = AcY / ACCEL_SCALE_FACTOR;
@@ -629,19 +543,18 @@ void calibrateAttitude() {
     current_time = micros();      
     dt = (current_time - prev_time)/1000000.0; 
     getIMUdata();
-    Madgwick(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, MagY, -MagX, MagZ, dt);
+    Madgwick6DOF(GyroX, -GyroY, -GyroZ, -AccX, AccY, AccZ, dt);
     loopRate(2000); //do not exceed 2000Hz
   }
 }
 
 void Madgwick(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz, float invSampleFreq) {
-  //DESCRIPTION: Attitude estimation through sensor fusion - 9DOF
+  //DESCRIPTION: Attitude estimation through sensor fusion - 6DOF for MPU6050
   /*
-   * This function fuses the accelerometer gyro, and magnetometer readings AccX, AccY, AccZ, GyroX, GyroY, GyroZ, MagX, MagY, and MagZ for attitude estimation.
-   * Don't worry about the math. There is a tunable parameter B_madgwick in the user specified variable section which basically
-   * adjusts the weight of gyro data in the state estimate. Higher beta leads to noisier estimate, lower 
-   * beta leads to slower to respond estimate. It is currently tuned for 2kHz loop rate. This function updates the roll_IMU,
-   * pitch_IMU, and yaw_IMU variables which are in degrees. If magnetometer data is not available, this function calls Madgwick6DOF() instead.
+   * This function fuses the accelerometer and gyro readings AccX, AccY, AccZ, GyroX, GyroY, GyroZ for attitude estimation.
+   * For MPU6050 (no magnetometer), it automatically calls the 6DOF algorithm. There is a tunable parameter B_madgwick
+   * which adjusts the weight of gyro data in the state estimate. Higher beta leads to noisier estimate, lower 
+   * beta leads to slower response. This function updates roll_IMU, pitch_IMU, and yaw_IMU variables (degrees).
    */
   float recipNorm;
   float s0, s1, s2, s3;
@@ -1253,28 +1166,12 @@ void getCommands() {
    * The raw radio commands are filtered with a first order low-pass filter to eliminate any really high frequency noise. 
    */
 
-  #if defined USE_PPM_RX || defined USE_PWM_RX
-    channel_1_pwm = getRadioPWM(1);
-    channel_2_pwm = getRadioPWM(2);
-    channel_3_pwm = getRadioPWM(3);
-    channel_4_pwm = getRadioPWM(4);
-    channel_5_pwm = getRadioPWM(5);
-    channel_6_pwm = getRadioPWM(6);
-    
-  #elif defined USE_SBUS_RX
-    if (sbus.read(&sbusChannels[0], &sbusFailSafe, &sbusLostFrame))
-    {
-      //sBus scaling below is for Taranis-Plus and X4R-SB
-      float scale = 0.615;  
-      float bias  = 895.0; 
-      channel_1_pwm = sbusChannels[0] * scale + bias;
-      channel_2_pwm = sbusChannels[1] * scale + bias;
-      channel_3_pwm = sbusChannels[2] * scale + bias;
-      channel_4_pwm = sbusChannels[3] * scale + bias;
-      channel_5_pwm = sbusChannels[4] * scale + bias;
-      channel_6_pwm = sbusChannels[5] * scale + bias; 
-    }
-  #endif
+  channel_1_pwm = getRadioPWM(1);
+  channel_2_pwm = getRadioPWM(2);
+  channel_3_pwm = getRadioPWM(3);
+  channel_4_pwm = getRadioPWM(4);
+  channel_5_pwm = getRadioPWM(5);
+  channel_6_pwm = getRadioPWM(6);
   
   //Low-pass the critical commands and update previous values
   float b = 0.2; //lower=slower, higher=noiser
@@ -1481,52 +1378,6 @@ void throttleCut() {
   }
 }
 
-void calibrateMagnetometer() {
-  #if defined USE_MPU9250_SPI 
-    float success;
-    Serial.println("Beginning magnetometer calibration in");
-    Serial.println("3...");
-    delay(1000);
-    Serial.println("2...");
-    delay(1000);
-    Serial.println("1...");
-    delay(1000);
-    Serial.println("Rotate the IMU about all axes until complete.");
-    Serial.println(" ");
-    success = mpu9250.calibrateMag();
-    if(success) {
-      Serial.println("Calibration Successful!");
-      Serial.println("Please comment out the calibrateMagnetometer() function and copy these values into the code:");
-      Serial.print("float MagErrorX = ");
-      Serial.print(mpu9250.getMagBiasX_uT());
-      Serial.println(";");
-      Serial.print("float MagErrorY = ");
-      Serial.print(mpu9250.getMagBiasY_uT());
-      Serial.println(";");
-      Serial.print("float MagErrorZ = ");
-      Serial.print(mpu9250.getMagBiasZ_uT());
-      Serial.println(";");
-      Serial.print("float MagScaleX = ");
-      Serial.print(mpu9250.getMagScaleFactorX());
-      Serial.println(";");
-      Serial.print("float MagScaleY = ");
-      Serial.print(mpu9250.getMagScaleFactorY());
-      Serial.println(";");
-      Serial.print("float MagScaleZ = ");
-      Serial.print(mpu9250.getMagScaleFactorZ());
-      Serial.println(";");
-      Serial.println(" ");
-      Serial.println("If you are having trouble with your attitude estimate at a new flying location, repeat this process as needed.");
-    }
-    else {
-      Serial.println("Calibration Unsuccessful. Please reset the board and try again.");
-    }
-  
-    while(1); //halt code so it won't enter main loop until this function commented out
-  #endif
-  Serial.println("Error: MPU9250 not selected. Cannot calibrate non-existent magnetometer.");
-  while(1); //halt code so it won't enter main loop until this function commented out
-}
 
 void loopRate(int freq) {
   //DESCRIPTION: Regulate main loop rate to specified frequency in Hz
@@ -1632,17 +1483,6 @@ void printAccelData() {
   }
 }
 
-void printMagData() {
-    if (current_time - print_counter > 10000) {
-    print_counter = micros();
-    Serial.print(F("MagX: "));
-    Serial.print(MagX);
-    Serial.print(F(" MagY: "));
-    Serial.print(MagY);
-    Serial.print(F(" MagZ: "));
-    Serial.println(MagZ);
-  }
-}
 
 void printRollPitchYaw() {
     if (current_time - print_counter > 10000) {
