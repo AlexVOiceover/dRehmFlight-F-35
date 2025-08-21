@@ -1,0 +1,11 @@
+{
+    "platformio-ide.defaultEnvironment": "teensy40",
+    "platformio-ide.autoRebuildAutocompleteIndex": true,
+    "platformio-ide.activateProjectOnTextEditorChange": false,
+    "C_Cpp.intelliSenseEngine": "Tag Parser",
+    "files.associations": {
+        "*.ino": "cpp"
+    },
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+}

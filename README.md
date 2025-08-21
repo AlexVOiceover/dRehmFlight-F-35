@@ -1,83 +1,148 @@
-![dRehmFlight Logo](https://github.com/nickrehm/dRehmFlight/blob/master/dRehmFlight%20Logo.png)
+# dRehmFlight F-35 VTOL - PlatformIO Port
 
-[Intro Video](https://www.youtube.com/watch?v=tlD0C5CrWcA&lc=Ugx6m02xjHk8QH19vd94AaABAg)
+PlatformIO port of the dRehmFlight F-35 Lightning II inspired VTOL tricopter flight controller.
 
-[RcGroups Support Thread](https://www.rcgroups.com/forums/showthread.php?3706571-dRehmFlight-VTOL-Teensy-Flight-Controller-and-Stabilization)
+## Project Overview
 
-![F-35](https://github.com/nickrehm/dRehmFlight-F-35/blob/main/F-35.jpg)
+This is a specialized flight controller for an F-35 tricopter VTOL (Vertical Take-Off and Landing) vehicle based on the Teensy 4.0 microcontroller. The project has been converted from Arduino IDE to PlatformIO for better development workflow and dependency management.
 
-THIS IS NOT A CLEAN VERSION OF DREHMFLIGHT VTOL. UPDATES MADE FOR THE F-35 TRICOPTER VTOL: [Watch the F-35 Video Here](https://www.youtube.com/watch?v=RqdcZD0ZoUk)
+**Original Project**: [dRehmFlight F-35](https://github.com/nickrehm/dRehmFlight-F-35)  
+**Author**: Nicholas Rehm, University of Maryland
 
-CLEAN VERSION AVAILABLE HERE: https://github.com/nickrehm/dRehmFlight
+## Hardware Configuration
 
-**Compatible F-35 Parts:**
+### F-35 VTOL Specific Hardware (Current Configuration)
+- **Flight Controller**: Teensy 4.0 microcontroller
+- **IMU**: GY-521 MPU6050 6DOF IMU
+- **Radio**: Matek ELRS R24-P6V PWM receiver (ExpressLRS 2.4GHz)
+- **Motors**: 3x 2306 brushless motors (~2450 KV)
+- **ESC**: iFlight BLITZ E55S 4-in-1 ESC (OneShot125 protocol)
+- **Servos**: 5x SG90 micro servos for control surfaces
+- **Power**: 4S LiPo battery with WANGCL 5V/3A UBEC
 
-**Motors:** https://amzn.to/3qXXIU7
+### Pin Assignments
+```
+Radio (PWM):
+- CH1 (Throttle) → Pin 15
+- CH2 (Aileron)  → Pin 16  
+- CH3 (Elevator) → Pin 17
+- CH4 (Rudder)   → Pin 20
+- CH5 (Gear)     → Pin 21
+- CH6 (Aux1)     → Pin 22
 
-**Propellers:** https://amzn.to/3dMu52E
+IMU (I2C):
+- MPU6050 SDA → Pin 18
+- MPU6050 SCL → Pin 19
 
-**ESC:** https://amzn.to/3B22aq0
+Motors (OneShot125):
+- M1 (Nose)  → Pin 0
+- M2 (Right) → Pin 1  
+- M3 (Left)  → Pin 2
 
-**Battery:** https://amzn.to/2TEVEEp 
+Servos:
+- S1-S7 → Various pins for control surfaces
+```
 
-**Servos:** https://amzn.to/3hEwgGH
+## Development Setup
 
+### Prerequisites
+- [PlatformIO Core](https://platformio.org/install/cli) or [PlatformIO IDE](https://platformio.org/install/ide)
+- [Visual Studio Code](https://code.visualstudio.com/) (recommended)
 
-## Overview
-This project is a work in progress, and was originally developed for research vehicle platforms at the University of Maryland Alfred Gessow Rotorcraft Center. Current Version: Beta 1.2.
+### Building the Project
+```bash
+# Build the project
+pio run
 
-dRehmFlight is a simple, bare-bones flight controller intended for all types of vertical takeoff and landing (VTOL) vehicles from simple multirotors to more complex transitioning vehicles. This flight controller software and hardware package was developed with people in mind who may not be particularly fluent in object-oriented programming. The goal is to have an easy to understand flow of discrete operations that allows anyone with basic knowledge of coding in C/Arduino to peer into the code, make the changes they need for their specific application, and quickly have something flying. It is assumed that anyone using this code has previous experience building and flying model aircraft and is familiar with basic RC technology and terminology. The Teensy 4.0 board used for dRehmFlight is an extremely powerful microcontroller that allows for understandable code to run at very high speeds: perfect for a hobby-level flight controller. 
+# Upload to Teensy 4.0
+pio run --target upload
 
-Rather than a comprehensive package suitable for plug-and-play type setup, this package serves more as a toolkit, where all the required difficult computations and processes are done for you. From there, it is simple to adapt to your specific vehicle configuration with full access to every variable and pinout, unlike other flight controller packages. The code is easily modified and expandable to include your own actuators, data collection methods, and sensors. Much more information is provided in the comprehensive dRehmFlight VTOL Documentation .pdf.
+# Monitor serial output
+pio device monitor --baud 115200
+```
 
-This code is entirely free to use and will stay that way forever. If you found this helpful for your project, donations are appreciated: [Paypal Donation](https://www.paypal.me/NicholasRehm)
+### Hardware Configuration Options
 
+The flight controller supports multiple hardware configurations through `platformio.ini` build flags:
 
+#### Current F-35 Configuration
+```ini
+build_flags = 
+    -DUSE_PWM_RX          # PWM receiver
+    -DUSE_MPU6050_I2C     # MPU6050 IMU
+    -DGYRO_500DPS         # 500°/s gyro range
+    -DACCEL_2G            # 2G accelerometer
+```
 
-### Hardware Requirements
-This flight controller is based off of the Teensy 4.0 microcontroller and MPU6050 6DOF IMU. The following components (available on Amazon) are required to complete the flight controller assembly:
+#### Alternative Configurations
+To use different hardware, modify the build flags in `platformio.ini`:
 
+**Receiver Options:**
+- `-DUSE_PWM_RX` - PWM receiver (current)
+- `-DUSE_PPM_RX` - PPM receiver  
+- `-DUSE_SBUS_RX` - SBUS receiver
 
-**Teensy 4.0**: https://amzn.to/2V1q2Gw
+**IMU Options:**
+- `-DUSE_MPU6050_I2C` - MPU6050 via I2C (current)
+- `-DUSE_MPU9250_SPI` - MPU9250 via SPI
 
-**GY-521 MPU6050 IMU**: https://amzn.to/3edF1Vn
+**Gyro Range:**
+- `-DGYRO_250DPS` - 250°/s
+- `-DGYRO_500DPS` - 500°/s (current)
+- `-DGYRO_1000DPS` - 1000°/s
+- `-DGYRO_2000DPS` - 2000°/s
 
-These (and all Amazon links contained within the supporting documentation) are Amazon Affiliate links; by purchasing from these, I receive a small portion of the revenue at no cost to you. I appreciate any and all support!
+**Accelerometer Range:**
+- `-DACCEL_2G` - 2G (current)
+- `-DACCEL_4G` - 4G
+- `-DACCEL_8G` - 8G
+- `-DACCEL_16G` - 16G
 
-### Software Requirments
-Code is uploaded to the board using the Arduino IDE; download the latest version here: https://www.arduino.cc/en/main/software
+## Flight Modes
 
-To connect to the Teensy, you must also download and install the Teensyduino arduino add-on; download and instructions available here: https://www.pjrc.com/teensy/td_download.html
+The F-35 VTOL controller features three distinct flight modes:
 
+1. **Hover Mode** (CH6 > 1700): Standard multicopter hover control
+2. **Transition Mode** (1300 < CH6 < 1700): Gradual transition between hover and forward flight
+3. **Forward Flight** (CH6 < 1300): Airplane-like forward flight with elevon control
 
-## Tutorial Videos
-[Building the Flight Controller Hardware](https://www.youtube.com/watch?v=EBXBEB-Xv7w&)
+## Control Features
 
-[Setting Up Your Radio Connection](https://www.youtube.com/watch?v=Wdc1o6eSsMo)
+- **Thrust Vectoring**: Rear tilt servo for yaw control
+- **Elevon Control**: Wing control surfaces for pitch/roll in forward flight
+- **Flight Mode Switching**: Dynamic PID gains and control limits per mode
+- **Smooth Transitions**: Gradual motor mixing during mode changes
 
-[Mounting and Configuring the IMU](https://www.youtube.com/watch?v=pi4PiBFPt70)
+## Debugging
 
-[How the Flight Controller Code Works](https://www.youtube.com/watch?v=_n5GBudUf5Q&lc=UgwvXX18w7FtJH1ClLl4AaABAg)
+Enable debug output by uncommenting print functions in the main loop:
+- `printRadioData()` - Radio PWM values
+- `printGyroData()` - IMU gyro data
+- `printServoCommands()` - Servo positions
+- `printMotorCommands()` - Motor commands
+- `printLoopRate()` - Control loop timing
 
-## Flight Videos
-dRehmflight has been successfully implemented on the following platforms:
+## Safety
 
-**Autonomous Quadrotor:** https://www.youtube.com/watch?v=GZLUbTSWPI8
+⚠️ **IMPORTANT SAFETY NOTES**
+- This is experimental flight controller software
+- Always test thoroughly on the bench before flight
+- Use appropriate safety measures and failsafes
+- Follow all local regulations for RC aircraft operation
+- Never fly over people or property
 
-**Quadrotor Biplane VTOL:** https://www.youtube.com/watch?v=rk4tUKM6bd0
+## License
 
-**Dual Cyclocopter MAV:** https://www.youtube.com/watch?v=uP87-yU1l6I
+This code is entirely free to use. See `COPYING.txt` for license details.
 
-**VTOL F-35 Tricopter:** https://www.youtube.com/watch?v=Ds-ODWydxeY&
+## Credits
 
-**Model SpaceX Starhopper:** https://www.youtube.com/watch?v=VsyFejn40Ss
+- **Original Author**: Nicholas Rehm (nrehm@umd.edu)
+- **Institution**: University of Maryland, Department of Aerospace Engineering
+- **PlatformIO Port**: Community contribution
 
-**Model SpaceX Starship:** https://www.youtube.com/watch?v=5lwH7xJnB4I
+## Support
 
-
-## Disclaimer
-This code is a shared, open source flight controller for small micro aerial vehicles and is intended to be modified to suit your needs. It is NOT intended to be used on manned vehicles. I do not claim any responsibility for any damage or injury that may be inflicted as a result of the use of this code. Use and modify at your own risk. More specifically put:
-
-THIS SOFTWARE IS PROVIDED BY THE CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-[![Hits](https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2Fnickrehm%2FdRehmFlight-F-35&count_bg=%23FF0000&title_bg=%23555555&icon=&icon_color=%23E7E7E7&title=hits&edge_flat=false)](https://hits.seeyoufarm.com)
+- [Original dRehmFlight Repository](https://github.com/nickrehm/dRehmFlight)
+- [RC Groups Support Thread](https://www.rcgroups.com/forums/showthread.php?3706571-dRehmFlight-VTOL-Teensy-Flight-Controller-and-Stabilization)
+- [F-35 Tutorial Video](https://www.youtube.com/watch?v=RqdcZD0ZoUk)
