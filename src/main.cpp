@@ -95,7 +95,7 @@ void printAccelData();
 
 //SBUS external declarations (when using SBUS)
 #if defined USE_SBUS_RX
-  class SBUS;
+  #include "SBUS.h"
   extern SBUS sbus;
   extern uint16_t sbusChannels[16];
   extern bool sbusFailSafe;
@@ -1043,7 +1043,7 @@ void controlMixer() {
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   //Flight mode 2 - Transition
-  if (channel_6_pwm < 1700 & channel_6_pwm > 1300) {
+  if ((channel_6_pwm < 1700) && (channel_6_pwm > 1300)) {
     maxRoll = 180.0;    //max roll angle in degrees for angle mode, deg/sec for rate mode
     maxPitch = 180.0;   //max pitch angle in degrees for angle mode, deg/sec for rate mode
     maxYaw = 160.0;    //max yaw rate in degrees/sec
@@ -1180,11 +1180,6 @@ void getCommands() {
 
   #if defined USE_SBUS_RX
     //Read SBUS data from receiver
-    extern SBUS sbus;
-    extern uint16_t sbusChannels[16];
-    extern bool sbusFailSafe;
-    extern bool sbusLostFrame;
-    
     //Update SBUS data if new frame available
     sbus.read(&sbusChannels[0], &sbusFailSafe, &sbusLostFrame);
   #endif
@@ -1454,18 +1449,40 @@ void setupBlink(int numBlinks,int upTime, int downTime) {
 void printRadioData() {
   if (current_time - print_counter > 10000) {
     print_counter = micros();
-    Serial.print(F(" CH1: "));
-    Serial.print(channel_1_pwm);
-    Serial.print(F(" CH2: "));
-    Serial.print(channel_2_pwm);
-    Serial.print(F(" CH3: "));
-    Serial.print(channel_3_pwm);
-    Serial.print(F(" CH4: "));
-    Serial.print(channel_4_pwm);
-    Serial.print(F(" CH5: "));
-    Serial.print(channel_5_pwm);
-    Serial.print(F(" CH6: "));
-    Serial.println(channel_6_pwm);
+    
+    #if defined USE_SBUS_RX
+      //SBUS mode: Show converted PWM values and SBUS status
+      Serial.print(F("[SBUS] CH1:"));
+      Serial.print(channel_1_pwm);
+      Serial.print(F(" CH2:"));
+      Serial.print(channel_2_pwm);
+      Serial.print(F(" CH3:"));
+      Serial.print(channel_3_pwm);
+      Serial.print(F(" CH4:"));
+      Serial.print(channel_4_pwm);
+      Serial.print(F(" CH5:"));
+      Serial.print(channel_5_pwm);
+      Serial.print(F(" CH6:"));
+      Serial.print(channel_6_pwm);
+      Serial.print(F(" |FS:"));
+      Serial.print(sbusFailSafe ? "Y" : "N");
+      Serial.print(F(" Lost:"));
+      Serial.println(sbusLostFrame ? "Y" : "N");
+    #else
+      //PWM mode: Show PWM values
+      Serial.print(F("[PWM] CH1: "));
+      Serial.print(channel_1_pwm);
+      Serial.print(F(" CH2: "));
+      Serial.print(channel_2_pwm);
+      Serial.print(F(" CH3: "));
+      Serial.print(channel_3_pwm);
+      Serial.print(F(" CH4: "));
+      Serial.print(channel_4_pwm);
+      Serial.print(F(" CH5: "));
+      Serial.print(channel_5_pwm);
+      Serial.print(F(" CH6: "));
+      Serial.println(channel_6_pwm);
+    #endif
   }
 }
 
