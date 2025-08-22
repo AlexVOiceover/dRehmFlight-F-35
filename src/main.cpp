@@ -74,6 +74,7 @@ void commandMotors();
 void setupBlink(int, int, int);
 void loopBlink();
 void printServoCommands();
+void printMotorCommands();
 void Madgwick6DOF(float, float, float, float, float, float, float);
 void getDesState();
 void controlRATE();
@@ -367,9 +368,9 @@ void loop() {
   //printDesiredState();  //prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
   //printRadioData();     //prints radio PWM values (expected: 1000-2000 range) - DISABLED: Working correctly
   //printDesiredState();  //prints desired roll, pitch, yaw angles and throttle
-  printGyroData();      //prints raw gyro data for plotting
+  //printGyroData();      //prints raw gyro data for plotting
   //printPIDoutput();     //prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
-  //printMotorCommands(); //prints the values being written to the motors (expected: 120 to 250)
+  printMotorCommands(); //prints the values being written to the motors (expected: 120 to 250)
   //printServoCommands(); //prints the values being written to the servos (expected: 0 to 180)
   //printLoopRate();      //prints the time between loops in microseconds (expected: microseconds between loop iterations)
 
@@ -1644,39 +1645,55 @@ void printPIDoutput() {
 }
 
 void printMotorCommands() {
-    if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > 1000000) { //Print every 1 second
     print_counter = micros();
-    Serial.print(F("m1_command: "));
+    
+    //Show flight mode and throttle
+    Serial.print(F("CH1(Throttle): "));
+    Serial.print(channel_1_pwm);
+    Serial.print(F(" | Motors: M1:"));
     Serial.print(m1_command_PWM);
-    Serial.print(F(" m2_command: "));
+    Serial.print(F(" M2:"));
     Serial.print(m2_command_PWM);
-    Serial.print(F(" m3_command: "));
+    Serial.print(F(" M3:"));
     Serial.print(m3_command_PWM);
-    Serial.print(F(" m4_command: "));
+    Serial.print(F(" | Unused: M4:"));
     Serial.print(m4_command_PWM);
-    Serial.print(F(" m5_command: "));
+    Serial.print(F(" M5:"));
     Serial.print(m5_command_PWM);
-    Serial.print(F(" m6_command: "));
+    Serial.print(F(" M6:"));
     Serial.println(m6_command_PWM);
   }
 }
 
 void printServoCommands() {
-    if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > 1000000) { //Print every 1 second
     print_counter = micros();
-    Serial.print(F("s1_command: "));
+    
+    //Show flight mode based on channel 6
+    Serial.print(F("CH6: "));
+    Serial.print(channel_6_pwm);
+    if (channel_6_pwm > 1700) {
+      Serial.print(F(" [HOVER] "));
+    } else if (channel_6_pwm > 1300) {
+      Serial.print(F(" [TRANSITION] "));
+    } else {
+      Serial.print(F(" [FORWARD] "));
+    }
+    
+    Serial.print(F("Servos: S1:"));
     Serial.print(s1_command_PWM);
-    Serial.print(F(" s2_command: "));
+    Serial.print(F(" S2:"));
     Serial.print(s2_command_PWM);
-    Serial.print(F(" s3_command: "));
+    Serial.print(F(" S3:"));
     Serial.print(s3_command_PWM);
-    Serial.print(F(" s4_command: "));
+    Serial.print(F(" S4:"));
     Serial.print(s4_command_PWM);
-    Serial.print(F(" s5_command: "));
+    Serial.print(F(" S5:"));
     Serial.print(s5_command_PWM);
-    Serial.print(F(" s6_command: "));
+    Serial.print(F(" S6:"));
     Serial.print(s6_command_PWM);
-    Serial.print(F(" s7_command: "));
+    Serial.print(F(" S7:"));
     Serial.println(s7_command_PWM);
   }
 }
