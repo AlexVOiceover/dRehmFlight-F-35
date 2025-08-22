@@ -1,3 +1,19 @@
+# PlatformIO build files
+.pio/
 .pio
+
+# VS Code settings
+.vscode/
 .vscode
+
+# Claude Code conversation history
+.claude/
 .claude
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
