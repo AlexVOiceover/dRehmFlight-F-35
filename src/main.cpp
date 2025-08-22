@@ -269,6 +269,11 @@ void setup() {
   Serial.begin(500000); //usb serial
   delay(1000); //1 second delay for plugging in battery before IMU calibration begins, feel free to comment this out to reduce boot time
   
+  Serial.println("==========================================");
+  Serial.println("    F-35 VTOL Flight Controller v1.2");
+  Serial.println("==========================================");
+  Serial.println("Initializing system...");
+  
   //Initialize all pins
   pinMode(13, OUTPUT); //pin 13 LED blinker on board, do not modify 
   pinMode(m1Pin, OUTPUT);
@@ -358,11 +363,11 @@ void loop() {
   loopBlink(); //indicate we are in main loop with short blink every 1.5 seconds
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-  //printRadioData();     //radio pwm values (expected: 1000 to 2000)
+  //printRadioData();     //radio pwm values (expected: 1000 to 2000) - DISABLED: Radio working fine
   //printDesiredState();  //prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
-  printRadioData();     //prints radio PWM values (expected: 1000-2000 range)
+  //printRadioData();     //prints radio PWM values (expected: 1000-2000 range) - DISABLED: Working correctly
   //printDesiredState();  //prints desired roll, pitch, yaw angles and throttle
-  //printRollPitchYaw();  //prints roll, pitch, and yaw angles in degrees from Madgwick filter (expected: degrees, 0 when level)
+  printGyroData();      //prints raw gyro data for plotting
   //printPIDoutput();     //prints computed stabilized PID variables from controller and desired setpoint (expected: ~ -1 to 1)
   //printMotorCommands(); //prints the values being written to the motors (expected: 120 to 250)
   //printServoCommands(); //prints the values being written to the servos (expected: 0 to 180)
@@ -511,6 +516,11 @@ void calculate_IMU_error() {
    * accelerometer values AccX, AccY, AccZ, GyroX, GyroY, GyroZ in getIMUdata(). This eliminates drift in the
    * measurement. 
    */
+  
+  Serial.println("=== IMU CALIBRATION STARTING ===");
+  Serial.println("Keep vehicle LEVEL and STATIONARY!");
+  Serial.println("Reading 12000 samples...");
+  
   int16_t AcX,AcY,AcZ,GyX,GyY,GyZ;
   
   //Read IMU values 12000 times
@@ -533,7 +543,15 @@ void calculate_IMU_error() {
     GyroErrorY = GyroErrorY + GyroY;
     GyroErrorZ = GyroErrorZ + GyroZ;
     c++;
+    
+    //Progress indicator every 2000 samples
+    if (c % 2000 == 0) {
+      Serial.print("Progress: ");
+      Serial.print((c * 100) / 12000);
+      Serial.println("%");
+    }
   }
+  
   //Divide the sum by 12000 to get the error value
   AccErrorX  = AccErrorX / c;
   AccErrorY  = AccErrorY / c;
@@ -541,6 +559,17 @@ void calculate_IMU_error() {
   GyroErrorX = GyroErrorX / c;
   GyroErrorY = GyroErrorY / c;
   GyroErrorZ = GyroErrorZ / c;
+  
+  //Display calibration results
+  Serial.println("=== IMU CALIBRATION COMPLETE ===");
+  Serial.println("Calculated Error Values:");
+  Serial.print("Gyro Errors  - X: "); Serial.print(GyroErrorX, 4);
+  Serial.print(" Y: "); Serial.print(GyroErrorY, 4);
+  Serial.print(" Z: "); Serial.println(GyroErrorZ, 4);
+  Serial.print("Accel Errors - X: "); Serial.print(AccErrorX, 4);
+  Serial.print(" Y: "); Serial.print(AccErrorY, 4);
+  Serial.print(" Z: "); Serial.println(AccErrorZ, 4);
+  Serial.println("================================");
 }
 
 void calibrateAttitude() {
@@ -1560,14 +1589,20 @@ void printDesiredState() {
 }
 
 void printGyroData() {
-    if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > 1000000) { //Print every 1 second
     print_counter = micros();
-    Serial.print(F("GyroX: "));
-    Serial.print(GyroX);
-    Serial.print(F(" GyroY: "));
-    Serial.print(GyroY);
-    Serial.print(F(" GyroZ: "));
-    Serial.println(GyroZ);
+    Serial.print(F("Gyro - X: "));
+    Serial.print(GyroX, 2);
+    Serial.print(F(" Y: "));
+    Serial.print(GyroY, 2);
+    Serial.print(F(" Z: "));
+    Serial.print(GyroZ, 2);
+    Serial.print(F(" | Accel - X: "));
+    Serial.print(AccX, 2);
+    Serial.print(F(" Y: "));
+    Serial.print(AccY, 2);
+    Serial.print(F(" Z: "));
+    Serial.println(AccZ, 2);
   }
 }
 

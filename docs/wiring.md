@@ -80,9 +80,37 @@
 - USB cable → Teensy (for bench testing only)
 - Not suitable for actual flight
 
+## Servo Connections - F-35 Control Surfaces
+
+### Servo Signal Connections
+- **Servo 1** → Teensy **Pin 6** (Right Elevon)
+- **Servo 2** → Teensy **Pin 7** (Left Elevon)  
+- **Servo 3** → Teensy **Pin 8** (Right Aileron)
+- **Servo 4** → Teensy **Pin 9** (Left Aileron)
+- **Servo 5** → Teensy **Pin 10** (Yaw Tilt)
+- **Servo 6** → Teensy **Pin 11** (Available)
+- **Servo 7** → Teensy **Pin 12** (Available)
+
+### Servo Power Connections
+- **All Servo VCC** → UBEC **5V Output** (or dedicated BEC)
+- **All Servo GND** → Teensy **GND**
+
+### Servo Specifications
+- **Type**: SG90 micro servos (or compatible)
+- **Voltage**: 5V (powered by UBEC)
+- **PWM Range**: 900-2100μs (configured in software)
+- **Control**: Standard PWM servo control (50Hz, 1000-2000μs)
+
+### F-35 Control Surface Layout
+- **Servo 1 & 2**: Elevons (pitch + roll control in forward flight)
+- **Servo 3 & 4**: Ailerons (roll control in hover mode)
+- **Servo 5**: Yaw tilt servo (yaw control)
+- **Servo 6 & 7**: Available for additional control surfaces
+
 ### Reserved Pins Summary
 - **Pin 13:** Onboard LED (reserved)
 - **Pin 18:** MPU6050 SDA (I2C)
 - **Pin 19:** MPU6050 SCL (I2C)
 - **Pins 0-2:** Motor/ESC outputs (m1Pin through m3Pin for tricopter)
-- **Pins 3-5:** Available for servos/additional actuators
+- **Pins 6-12:** Servo outputs (servo1Pin through servo7Pin)
+- **Pins 15-22:** Radio PWM inputs (ch1Pin through ch6Pin)
