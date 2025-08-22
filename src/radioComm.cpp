@@ -9,18 +9,15 @@
 
 #include <Arduino.h>
 
-//External pin definitions from main.cpp (COMMENTED for SBUS setup)
-/*
+//External pin definitions from main.cpp (RESTORED for PWM)
 extern int ch1Pin; //throttle
 extern int ch2Pin; //ail
 extern int ch3Pin; //ele
 extern int ch4Pin; //rudd
 extern int ch5Pin; //gear
 extern int ch6Pin; //aux1
-*/
 
-//PWM variables (COMMENTED for SBUS setup)
-/*
+//PWM variables (RESTORED for PWM setup)
 unsigned long rising_edge_start_1, rising_edge_start_2, rising_edge_start_3, rising_edge_start_4, rising_edge_start_5, rising_edge_start_6; 
 unsigned long channel_1_raw, channel_2_raw, channel_3_raw, channel_4_raw, channel_5_raw, channel_6_raw;
 
@@ -31,9 +28,9 @@ void getCh3();
 void getCh4();
 void getCh5();
 void getCh6();
-*/
 
-//SBUS variables and setup
+//SBUS variables and setup (COMMENTED - didn't work)
+/*
 #if defined USE_SBUS_RX
   #include "SBUS.h"
   SBUS sbus(Serial5);
@@ -41,13 +38,13 @@ void getCh6();
   bool sbusFailSafe;
   bool sbusLostFrame;
 #endif
+*/
 void radioSetup() {
   #if defined USE_SBUS_RX
     //SBUS Receiver Setup
     sbus.begin();
   #else
-    //PWM Receiver Setup (COMMENTED - uncomment to revert to PWM)
-    /*
+    //PWM Receiver Setup (RESTORED for PWM)
     //Declare interrupt pins 
     pinMode(ch1Pin, INPUT_PULLUP);
     pinMode(ch2Pin, INPUT_PULLUP);
@@ -64,7 +61,6 @@ void radioSetup() {
     attachInterrupt(digitalPinToInterrupt(ch5Pin), getCh5, CHANGE);
     attachInterrupt(digitalPinToInterrupt(ch6Pin), getCh6, CHANGE);
     delay(20);
-    */
   #endif
 }
 
@@ -81,8 +77,7 @@ unsigned long getRadioPWM(int ch_num) {
       returnPWM = sbusChannels[ch_num-1] * scale + bias;
     }
   #else
-    //PWM: Get from interrupt routines (COMMENTED for SBUS setup)
-    /*
+    //PWM: Get from interrupt routines (RESTORED for PWM setup)
     if (ch_num == 1) {
       returnPWM = channel_1_raw;
     }
@@ -101,7 +96,6 @@ unsigned long getRadioPWM(int ch_num) {
     else if (ch_num == 6) {
       returnPWM = channel_6_raw;
     }
-    */
   #endif
   
   return returnPWM;
@@ -113,8 +107,7 @@ unsigned long getRadioPWM(int ch_num) {
 
 
 
-//INTERRUPT SERVICE ROUTINES (for reading PWM - COMMENTED for SBUS setup)
-/*
+//INTERRUPT SERVICE ROUTINES (for reading PWM - RESTORED for PWM setup)
 void getCh1() {
   int trigger = digitalRead(ch1Pin);
   if(trigger == 1) {
@@ -174,4 +167,3 @@ void getCh6() {
     channel_6_raw = micros() - rising_edge_start_6;
   }
 }
-*/

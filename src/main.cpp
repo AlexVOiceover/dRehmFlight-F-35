@@ -93,7 +93,8 @@ float invSqrt(float x);
 void printGyroData();
 void printAccelData();
 
-//SBUS external declarations (when using SBUS)
+//SBUS external declarations (COMMENTED - reverting to PWM)
+/*
 #if defined USE_SBUS_RX
   #include "SBUS.h"
   extern SBUS sbus;
@@ -101,6 +102,7 @@ void printAccelData();
   extern bool sbusFailSafe;
   extern bool sbusLostFrame;
 #endif
+*/
 
 //========================================================================================================================//
 
@@ -173,18 +175,16 @@ float Kd_yaw = 0.00011;       //Yaw D-gain (be careful when increasing too high,
 //NOTE: Pin 13 is reserved for onboard LED, pins 18 and 19 are reserved for the MPU6050 IMU for default setup
 //Radio:
 //Note: If using SBUS, connect to pin 21 (RX5)
-//PWM pins (COMMENTED for SBUS setup - uncomment and disable SBUS to revert)
-/*
+//PWM pins (RESTORED for PWM receiver)
 int ch1Pin = 15; //throttle
 int ch2Pin = 16; //ail
 int ch3Pin = 17; //ele
 int ch4Pin = 20; //rudd
 int ch5Pin = 21; //gear (throttle cut)
 int ch6Pin = 22; //aux1 (free aux channel)
-*/
 
-//SBUS setup - using Serial5 on pin 21
-//Note: If using SBUS, connect R24 Output 1 pad to Teensy pin 21 (Serial5 RX)
+//SBUS setup - COMMENTED (didn't work with R24-P6V)
+//Note: R24-P6V appears to be PWM-only despite ELRS configurator options
 //OneShot125 ESC pin outputs:
 const int m1Pin = 0;
 const int m2Pin = 1;
@@ -1179,9 +1179,9 @@ void getCommands() {
    */
 
   #if defined USE_SBUS_RX
-    //Read SBUS data from receiver
+    //Read SBUS data from receiver (COMMENTED - reverting to PWM)
     //Update SBUS data if new frame available
-    sbus.read(&sbusChannels[0], &sbusFailSafe, &sbusLostFrame);
+    //sbus.read(&sbusChannels[0], &sbusFailSafe, &sbusLostFrame);
   #endif
   
   //Get channel values (SBUS values will be converted to PWM-like range in getRadioPWM)
@@ -1447,12 +1447,23 @@ void setupBlink(int numBlinks,int upTime, int downTime) {
 }
 
 void printRadioData() {
-  if (current_time - print_counter > 10000) {
+  if (current_time - print_counter > 1000000) { //Print every 1 second instead of 10ms
     print_counter = micros();
     
     #if defined USE_SBUS_RX
-      //SBUS mode: Show converted PWM values and SBUS status
-      Serial.print(F("[SBUS] CH1:"));
+      //SBUS mode: Show detailed debugging
+      Serial.print(F("[SBUS] RAW: "));
+      //Show raw SBUS values first (before conversion)
+      for(int i = 0; i < 6; i++) {
+        Serial.print(F("CH"));
+        Serial.print(i+1);
+        Serial.print(F(":"));
+        Serial.print(sbusChannels[i]);
+        Serial.print(F(" "));
+      }
+      Serial.print(F("| PWM: "));
+      //Show converted PWM values
+      Serial.print(F("CH1:"));
       Serial.print(channel_1_pwm);
       Serial.print(F(" CH2:"));
       Serial.print(channel_2_pwm);
@@ -1464,12 +1475,38 @@ void printRadioData() {
       Serial.print(channel_5_pwm);
       Serial.print(F(" CH6:"));
       Serial.print(channel_6_pwm);
-      Serial.print(F(" |FS:"));
+      Serial.print(F(" | Status: FS:"));
       Serial.print(sbusFailSafe ? "Y" : "N");
       Serial.print(F(" Lost:"));
-      Serial.println(sbusLostFrame ? "Y" : "N");
+      Serial.print(sbusLostFrame ? "Y" : "N");
+      //Check Serial5 activity
+      Serial.print(F(" Serial5_Avail:"));
+      int availBytes = Serial5.available();
+      Serial.print(availBytes);
+      //Show raw bytes (first 5 bytes only to avoid spam)
+      if(availBytes > 0) {
+        Serial.print(F(" RawBytes:"));
+        for(int i = 0; i < min(5, availBytes); i++) {
+          int b = Serial5.peek();
+          Serial.print(F("0x"));
+          Serial.print(b, HEX);
+          Serial.print(F(" "));
+          Serial5.read(); //consume the byte
+        }
+      }
+      //Check if SBUS read returns true (new data)
+      bool newSbusData = sbus.read(&sbusChannels[0], &sbusFailSafe, &sbusLostFrame);
+      Serial.print(F(" NewFrame:"));
+      Serial.print(newSbusData ? "Y" : "N");
+      //Check if we're getting new data
+      static uint16_t lastCh1 = 0;
+      if(sbusChannels[0] != lastCh1) {
+        Serial.print(F(" *CHANGE*"));
+        lastCh1 = sbusChannels[0];
+      }
+      Serial.println();
     #else
-      //PWM mode: Show PWM values
+      //PWM mode: Show PWM values and blink LED on signal detection
       Serial.print(F("[PWM] CH1: "));
       Serial.print(channel_1_pwm);
       Serial.print(F(" CH2: "));
@@ -1481,7 +1518,57 @@ void printRadioData() {
       Serial.print(F(" CH5: "));
       Serial.print(channel_5_pwm);
       Serial.print(F(" CH6: "));
-      Serial.println(channel_6_pwm);
+      Serial.print(channel_6_pwm);
+      
+      //Check raw PWM values from interrupt handlers
+      Serial.print(F(" | RAW: "));
+      Serial.print(channel_1_raw);
+      Serial.print(F(" "));
+      Serial.print(channel_2_raw);
+      Serial.print(F(" "));
+      Serial.print(channel_3_raw);
+      Serial.print(F(" "));
+      Serial.print(channel_4_raw);
+      Serial.print(F(" "));
+      Serial.print(channel_5_raw);
+      Serial.print(F(" "));
+      Serial.print(channel_6_raw);
+      
+      //Check if any PWM values are different from failsafe defaults
+      bool signalDetected = (channel_1_pwm != 1000) || (channel_2_pwm != 1500) || (channel_3_pwm != 1500) || 
+                           (channel_4_pwm != 1500) || (channel_5_pwm != 2000) || (channel_6_pwm != 2000);
+      
+      //Also check if raw values show any activity
+      bool rawActivity = (channel_1_raw > 0) || (channel_2_raw > 0) || (channel_3_raw > 0) || 
+                        (channel_4_raw > 0) || (channel_5_raw > 0) || (channel_6_raw > 0);
+      
+      if (signalDetected) {
+        Serial.print(F(" *RADIO_ACTIVE*"));
+        //Rapid LED blink pattern for radio signal detected (3 fast blinks)
+        for(int i = 0; i < 3; i++) {
+          digitalWrite(13, HIGH);
+          delay(50);
+          digitalWrite(13, LOW);
+          delay(50);
+        }
+      } else if (rawActivity) {
+        Serial.print(F(" *RAW_DETECTED*"));
+        //Double blink for raw activity but no converted signal
+        digitalWrite(13, HIGH);
+        delay(100);
+        digitalWrite(13, LOW);
+        delay(50);
+        digitalWrite(13, HIGH);
+        delay(100);
+        digitalWrite(13, LOW);
+      } else {
+        Serial.print(F(" *NO_SIGNAL*"));
+        //Single long blink for no signal at all
+        digitalWrite(13, HIGH);
+        delay(200);
+        digitalWrite(13, LOW);
+      }
+      Serial.println();
     #endif
   }
 }
