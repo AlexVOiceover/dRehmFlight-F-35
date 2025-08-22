@@ -85,7 +85,7 @@ void failSafe();
 void loopRate(int);
 void printRadioData();
 void getRawCommands();
-float getRadioPWM(int);
+unsigned long getRadioPWM(int);
 float floatFaderLinear(float, float, float, float, int, int);
 float floatFaderLinear2(float, float, float, float, float, float, int);
 float switchRollYaw(int, int);
@@ -1506,44 +1506,26 @@ void printRadioData() {
       }
       Serial.println();
     #else
-      //PWM mode: Show PWM values and blink LED on signal detection
-      Serial.print(F("[PWM] CH1: "));
+      //PWM mode: Show clean PWM values and LED status
+      Serial.print(F("[PWM] CH1:"));
       Serial.print(channel_1_pwm);
-      Serial.print(F(" CH2: "));
+      Serial.print(F(" CH2:"));
       Serial.print(channel_2_pwm);
-      Serial.print(F(" CH3: "));
+      Serial.print(F(" CH3:"));
       Serial.print(channel_3_pwm);
-      Serial.print(F(" CH4: "));
+      Serial.print(F(" CH4:"));
       Serial.print(channel_4_pwm);
-      Serial.print(F(" CH5: "));
+      Serial.print(F(" CH5:"));
       Serial.print(channel_5_pwm);
-      Serial.print(F(" CH6: "));
+      Serial.print(F(" CH6:"));
       Serial.print(channel_6_pwm);
-      
-      //Check raw PWM values from interrupt handlers
-      Serial.print(F(" | RAW: "));
-      Serial.print(channel_1_raw);
-      Serial.print(F(" "));
-      Serial.print(channel_2_raw);
-      Serial.print(F(" "));
-      Serial.print(channel_3_raw);
-      Serial.print(F(" "));
-      Serial.print(channel_4_raw);
-      Serial.print(F(" "));
-      Serial.print(channel_5_raw);
-      Serial.print(F(" "));
-      Serial.print(channel_6_raw);
       
       //Check if any PWM values are different from failsafe defaults
       bool signalDetected = (channel_1_pwm != 1000) || (channel_2_pwm != 1500) || (channel_3_pwm != 1500) || 
                            (channel_4_pwm != 1500) || (channel_5_pwm != 2000) || (channel_6_pwm != 2000);
       
-      //Also check if raw values show any activity
-      bool rawActivity = (channel_1_raw > 0) || (channel_2_raw > 0) || (channel_3_raw > 0) || 
-                        (channel_4_raw > 0) || (channel_5_raw > 0) || (channel_6_raw > 0);
-      
       if (signalDetected) {
-        Serial.print(F(" *RADIO_ACTIVE*"));
+        Serial.print(F(" ✓"));
         //Rapid LED blink pattern for radio signal detected (3 fast blinks)
         for(int i = 0; i < 3; i++) {
           digitalWrite(13, HIGH);
@@ -1551,19 +1533,9 @@ void printRadioData() {
           digitalWrite(13, LOW);
           delay(50);
         }
-      } else if (rawActivity) {
-        Serial.print(F(" *RAW_DETECTED*"));
-        //Double blink for raw activity but no converted signal
-        digitalWrite(13, HIGH);
-        delay(100);
-        digitalWrite(13, LOW);
-        delay(50);
-        digitalWrite(13, HIGH);
-        delay(100);
-        digitalWrite(13, LOW);
       } else {
-        Serial.print(F(" *NO_SIGNAL*"));
-        //Single long blink for no signal at all
+        Serial.print(F(" ✗"));
+        //Single long blink for no signal
         digitalWrite(13, HIGH);
         delay(200);
         digitalWrite(13, LOW);

@@ -20,7 +20,8 @@
       "Bash(npm:*)",
       "Bash(code:*)",
       "Bash(gemini:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
