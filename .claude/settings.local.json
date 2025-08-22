@@ -1,27 +1,7 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch",
-      "Bash(mkdir:*)",
-      "Bash(cp:*)",
-      "Bash(pio run:*)",
-      "Bash(rm:*)",
-      "Bash(mv:*)",
-      "Bash(curl:*)",
-      "Bash(python3:*)",
-      "Bash(export PATH=$PATH:/Users/alex/.platformio/penv/bin)",
-      "Bash(echo $PATH)",
-      "Bash(/Users/alex/.platformio/penv/bin/platformio --version)",
-      "Bash(/Users/alex/.platformio/penv/bin/platformio run)",
-      "Bash(grep:*)",
-      "Bash(/Users/alex/.platformio/penv/bin/platformio run --target clean)",
-      "Bash(/Users/alex/.platformio/penv/bin/platformio init --ide vscode)",
-      "Bash(node:*)",
-      "Bash(npm:*)",
-      "Bash(code:*)",
-      "Bash(gemini:*)",
-      "WebFetch(domain:github.com)",
-      "Bash(git add:*)"
+      "Bash(git filter-branch:*)"
     ],
     "deny": [],
     "ask": []
