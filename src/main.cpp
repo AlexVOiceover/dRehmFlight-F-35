@@ -131,7 +131,7 @@ unsigned long channel_1_fs = 1000; //thro
 unsigned long channel_2_fs = 1500; //ail
 unsigned long channel_3_fs = 1500; //elev
 unsigned long channel_4_fs = 1500; //rudd
-unsigned long channel_5_fs = 2000; //gear, greater than 1500 = throttle cut
+unsigned long channel_5_fs = 2000; //gear, less than 1500 = throttle cut
 unsigned long channel_6_fs = 2000; //aux1
 
 //Filter parameters - Defaults tuned for 2kHz loop rate; Do not touch unless you know what you are doing:
@@ -364,7 +364,7 @@ void loop() {
   loopBlink(); //indicate we are in main loop with short blink every 1.5 seconds
 
   //Print data at 100hz (uncomment one at a time for troubleshooting) - SELECT ONE:
-  //printRadioData();     //radio pwm values (expected: 1000 to 2000) - DISABLED: Radio working fine
+  //printRadioData();     //radio pwm values (expected: 1000 to 2000)
   //printDesiredState();  //prints desired vehicle state commanded in either degrees or deg/sec (expected: +/- maxAXIS for roll, pitch, yaw; 0 to 1 for throttle)
   //printRadioData();     //prints radio PWM values (expected: 1000-2000 range) - DISABLED: Working correctly
   //printDesiredState();  //prints desired roll, pitch, yaw angles and throttle
@@ -1408,7 +1408,7 @@ void throttleCut() {
    * called before commandMotors() is called so that the last thing checked is if the user is giving permission to command
    * the motors to anything other than minimum value. Safety first. 
    */
-  if (channel_5_pwm > 1500) {
+  if (channel_5_pwm < 1500) {
     m1_command_PWM = 120;
     m2_command_PWM = 120;
     m3_command_PWM = 120;
@@ -1648,21 +1648,41 @@ void printMotorCommands() {
   if (current_time - print_counter > 1000000) { //Print every 1 second
     print_counter = micros();
     
-    //Show flight mode and throttle
-    Serial.print(F("CH1(Throttle): "));
+    //Show detailed motor debugging
+    Serial.print(F("CH1:"));
     Serial.print(channel_1_pwm);
-    Serial.print(F(" | Motors: M1:"));
+    Serial.print(F(" CH5:"));
+    Serial.print(channel_5_pwm);
+    
+    //Show arming status
+    if (channel_5_pwm < 1500) {
+      Serial.print(F(" [THROTTLE CUT] "));
+    } else {
+      Serial.print(F(" [ARMED] "));
+    }
+    
+    //Show throttle desired
+    Serial.print(F("thro_des:"));
+    Serial.print(thro_des, 3);
+    
+    //Show motor commands
+    Serial.print(F(" Motors: M1:"));
     Serial.print(m1_command_PWM);
     Serial.print(F(" M2:"));
     Serial.print(m2_command_PWM);
     Serial.print(F(" M3:"));
     Serial.print(m3_command_PWM);
-    Serial.print(F(" | Unused: M4:"));
-    Serial.print(m4_command_PWM);
-    Serial.print(F(" M5:"));
-    Serial.print(m5_command_PWM);
-    Serial.print(F(" M6:"));
-    Serial.println(m6_command_PWM);
+    
+    //Show if motors should be spinning
+    if (channel_5_pwm >= 1500 && channel_1_pwm > 1060) {
+      Serial.print(F(" [SHOULD SPIN]"));
+    } else if (channel_5_pwm < 1500) {
+      Serial.print(F(" [CUT]"));
+    } else {
+      Serial.print(F(" [LOW THROTTLE]"));
+    }
+    
+    Serial.println();
   }
 }
 

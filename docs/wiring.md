@@ -3,7 +3,7 @@
 ## Matek ELRS R24-P6V to Teensy 4.0 Wiring
 
 ### Power Connections
-- R24-P6V **VCC** → Teensy **5V** (or 3.3V if using 3.3V power)
+- R24-P6V **VCC** → UBEC **5V Output** (receiver accepts 3.3V-6V input)
 - R24-P6V **GND** → Teensy **GND**
 
 ### PWM Signal Connections
@@ -58,7 +58,7 @@
 ### UBEC Power Distribution
 - 4S LiPo **BAT+** → UBEC **Input +** (5.5V-26V range)
 - 4S LiPo **BAT-** → UBEC **Input -**
-- UBEC **5V Output** → Teensy **VIN**
+- UBEC **5V Output** → Teensy **VIN** (VIN pin accepts 3.6V-5.5V)
 - UBEC **GND** → Teensy **GND**
 
 ### Components Powered by UBEC (5V)
